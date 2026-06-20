@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#534AB7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="NoteVault">
+<title>NoteVault</title>
+<link rel="manifest" href="#" id="manifest-link">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --accent: #534AB7;
+    --accent-light: #EEEDFE;
+    --accent-mid: #7F77DD;
+    --accent-dark: #3C3489;
+    --teal: #1D9E75;
+    --teal-light: #E1F5EE;
+    --teal-text: #085041;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --red-text: #501313;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --amber-text: #412402;
+    --bg: #ffffff;
+    --bg2: #f7f7f9;
+    --bg3: #f0eff5;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a2e;
+    --text2: #5a5a72;
+    --text3: #9898aa;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(83,74,183,0.08);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'Fira Mono', 'Consolas', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #7F77DD;
+      --accent-light: #26215C;
+      --accent-mid: #AFA9EC;
+      --accent-dark: #CECBF6;
+      --teal: #5DCAA5;
+      --teal-light: #04342C;
+      --teal-text: #9FE1CB;
+      --red: #F09595;
+      --red-light: #501313;
+      --red-text: #F7C1C1;
+      --amber: #EF9F27;
+      --amber-light: #412402;
+      --amber-text: #FAC775;
+      --bg: #18181f;
+      --bg2: #22222e;
+      --bg3: #2a2a3a;
+      --border: rgba(255,255,255,0.09);
+      --border2: rgba(255,255,255,0.18);
+      --text: #e8e8f4;
+      --text2: #9898b8;
+      --text3: #5a5a78;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: var(--font); background: var(--bg2); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 16px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+  }
+  .app-title { font-size: 20px; font-weight: 600; color: var(--accent); letter-spacing: -0.3px; flex: 1; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border: none; background: none;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text2);
+    font-size: 20px;
+    transition: background 0.15s;
+  }
+  .icon-btn:active { background: var(--bg3); }
+  .icon-btn.accent { color: var(--accent); }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap { padding: 10px 16px 12px; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .search-box svg { color: var(--text3); flex-shrink: 0; }
+  .search-box input {
+    border: none; background: none; outline: none;
+    font-size: 15px; color: var(--text); flex: 1;
+    font-family: var(--font);
+  }
+  .search-box input::placeholder { color: var(--text3); }
+
+  /* ── CATEGORY FILTER ── */
+  .cat-strip {
+    display: flex; gap: 8px;
+    overflow-x: auto; padding: 10px 16px;
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .cat-strip::-webkit-scrollbar { display: none; }
+  .cat-pill {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 0.5px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text2);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .cat-pill.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* ── NOTE LIST ── */
+  .note-list {
+    flex: 1; overflow-y: auto;
+    padding: 12px 16px 100px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .note-card {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .note-card:active { transform: scale(0.985); }
+  .note-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .note-card-title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.4; }
+  .note-card-date { font-size: 11px; color: var(--text3); flex-shrink: 0; margin-top: 2px; }
+  .note-card-preview { font-size: 13px; color: var(--text2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
+  .note-card-footer { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tag-pill {
+    font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: 20px;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .tag-pill.teal { background: var(--teal-light); color: var(--teal-text); }
+  .tag-pill.amber { background: var(--amber-light); color: var(--amber-text); }
+  .delete-hint {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    background: var(--red-light);
+    width: 80px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--red);
+    font-size: 22px;
+    transform: translateX(100%);
+    transition: transform 0.2s;
+  }
+  .note-card.swiped .delete-hint { transform: translateX(0); }
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px; color: var(--text3); padding: 40px;
+    text-align: center;
+  }
+  .empty-state svg { opacity: 0.3; }
+  .empty-state p { font-size: 15px; }
+  .empty-state small { font-size: 13px; }
+
+  /* ── FAB ── */
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 56px; height: 56px;
+    background: var(--accent);
+    color: #fff;
+    border: none; border-radius: 50%;
+    font-size: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(83,74,183,0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+    z-index: 20;
+    line-height: 1;
+  }
+  .fab:active { transform: scale(0.93); }
+
+  /* ── EDITOR SCREEN ── */
+  #editor-screen { background: var(--bg); }
+  .editor-header {
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 12px;
+    flex-shrink: 0;
+  }
+  .editor-header .header-row { gap: 8px; }
+  .editor-title-input {
+    flex: 1;
+    border: none; outline: none;
+    font-size: 17px; font-weight: 500;
+    color: var(--text);
+    background: none;
+    font-family: var(--font);
+    min-width: 0;
+  }
+  .editor-title-input::placeholder { color: var(--text3); }
+
+  /* Toggle bar */
+  .toggle-bar {
+    display: flex; gap: 0;
+    background: var(--bg2);
+    border-bottom: 0.5px solid var(--border);
+    padding: 8px 16px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toggle-group { display: flex; gap: 0; background: var(--bg3); border-radius: 8px; padding: 2px; }
+  .toggle-btn {
+    padding: 5px 14px; border: none; background: none;
+    border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; color: var(--text2); transition: all 0.15s;
+    font-family: var(--font);
+  }
+  .toggle-btn.active { background: var(--bg); color: var(--accent); box-shadow: var(--shadow); }
+  .word-count { font-size: 12px; color: var(--text3); }
+
+  /* Category tag in editor */
+  .cat-selector {
+    padding: 8px 16px 10px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; gap: 8px; align-items: center;
+    overflow-x: auto; scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .cat-selector::-webkit-scrollbar { display: none; }
+  .cat-label { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+
+  /* Markdown editor */
+  .md-editor {
+    flex: 1;
+    border: none; outline: none; resize: none;
+    padding: 16px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    font-family: var(--mono);
+    overflow-y: auto;
+  }
+  .md-preview {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  .md-preview.hidden, .md-editor.hidden { display: none; }
+
+  /* Markdown preview styles */
+  .md-preview h1 { font-size: 22px; font-weight: 500; margin: 0 0 16px; color: var(--text); }
+  .md-preview h2 { font-size: 18px; font-weight: 500; margin: 20px 0 10px; color: var(--text); }
+  .md-preview h3 { font-size: 15px; font-weight: 500; margin: 16px 0 8px; color: var(--text); }
+  .md-preview p { margin: 0 0 12px; color: var(--text2); line-height: 1.7; font-size: 15px; }
+  .md-preview ul, .md-preview ol { margin: 0 0 12px 20px; color: var(--text2); line-height: 1.7; font-size: 15px; }
+  .md-preview li { margin-bottom: 4px; }
+  .md-preview code { background: var(--bg3); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .md-preview pre { background: var(--bg3); padding: 12px; border-radius: var(--radius-sm); margin: 0 0 12px; overflow-x: auto; }
+  .md-preview pre code { background: none; padding: 0; color: var(--text); }
+  .md-preview blockquote { border-left: 3px solid var(--accent); padding-left: 12px; margin: 0 0 12px; color: var(--text2); font-style: italic; }
+  .md-preview strong { font-weight: 500; color: var(--text); }
+  .md-preview em { font-style: italic; }
+  .md-preview hr { border: none; border-top: 0.5px solid var(--border2); margin: 16px 0; }
+  .md-preview a { color: var(--accent); text-decoration: underline; }
+  .md-preview table { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 14px; }
+  .md-preview th { background: var(--bg2); padding: 8px; border: 0.5px solid var(--border2); font-weight: 500; text-align: left; }
+  .md-preview td { padding: 7px 8px; border: 0.5px solid var(--border); color: var(--text2); }
+
+  /* Toolbar */
+  .md-toolbar {
+    display: flex; gap: 4px;
+    padding: 6px 12px;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .md-toolbar::-webkit-scrollbar { display: none; }
+  .fmt-btn {
+    padding: 5px 10px;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg2);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; color: var(--text2);
+    flex-shrink: 0;
+    font-family: var(--font);
+    transition: background 0.1s;
+  }
+  .fmt-btn:active { background: var(--accent-light); color: var(--accent); }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: var(--bg);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px 20px 40px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 16px; }
+
+  /* Category list in modal */
+  .cat-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg2);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .cat-item-name { font-size: 15px; color: var(--text); }
+  .cat-item-count { font-size: 12px; color: var(--text3); }
+  .cat-add-row { display: flex; gap: 8px; margin-top: 16px; }
+  .text-input {
+    flex: 1;
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg2);
+    font-family: var(--font);
+    outline: none;
+  }
+  .text-input:focus { border-color: var(--accent); }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 15px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+  }
+  .btn-primary:active { background: var(--accent-dark); }
+  .btn-ghost {
+    background: var(--bg2); color: var(--text2);
+    border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 15px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+    width: 100%; text-align: center; margin-top: 8px;
+  }
+  .btn-ghost:active { background: var(--bg3); }
+  .btn-danger {
+    background: var(--red-light); color: var(--red);
+    border: 0.5px solid transparent; border-radius: var(--radius-sm);
+    padding: 8px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+  }
+
+  /* ── DRIVE MODAL ── */
+  .drive-section { margin-bottom: 20px; }
+  .drive-section h3 { font-size: 13px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .drive-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer; width: 100%; margin-bottom: 8px;
+    font-family: var(--font);
+    transition: background 0.1s;
+  }
+  .drive-btn:active { background: var(--bg3); }
+  .drive-btn svg { flex-shrink: 0; }
+  .drive-btn-text { text-align: left; }
+  .drive-btn-title { font-size: 15px; color: var(--text); display: block; }
+  .drive-btn-sub { font-size: 12px; color: var(--text3); display: block; margin-top: 2px; }
+  .backup-info { font-size: 12px; color: var(--text3); padding: 10px 0; text-align: center; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1a1a2e; color: #fff;
+    padding: 10px 20px; border-radius: 24px;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 200;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── SEARCH HIGHLIGHT ── */
+  mark { background: #FAC775; color: #412402; border-radius: 2px; padding: 0 2px; }
+
+  /* Scroll */
+  .note-list::-webkit-scrollbar, .md-editor::-webkit-scrollbar, .md-preview::-webkit-scrollbar { width: 3px; }
+  .note-list::-webkit-scrollbar-thumb, .md-editor::-webkit-scrollbar-thumb, .md-preview::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── INSTALL BANNER ── */
+  #install-banner {
+    display: none;
+    align-items: center; gap: 12px;
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 16px;
+    flex-shrink: 0;
+    animation: slideDown 0.3s ease;
+  }
+  #install-banner.visible { display: flex; }
+  @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .install-banner-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 20px;
+  }
+  .install-banner-text { flex: 1; }
+  .install-banner-title { font-size: 14px; font-weight: 500; }
+  .install-banner-sub { font-size: 12px; opacity: 0.8; margin-top: 1px; }
+  .install-banner-btn {
+    background: #fff; color: var(--accent);
+    border: none; border-radius: 20px;
+    padding: 7px 16px; font-size: 13px; font-weight: 500;
+    cursor: pointer; flex-shrink: 0; font-family: var(--font);
+    transition: opacity 0.15s;
+  }
+  .install-banner-btn:active { opacity: 0.8; }
+  .install-dismiss {
+    background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 20px; cursor: pointer; padding: 4px; line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* ── IOS INSTALL SHEET ── */
+  #ios-sheet .modal-sheet { padding-bottom: 48px; }
+  .ios-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .ios-step:last-of-type { border-bottom: none; }
+  .ios-step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent-light); color: var(--accent);
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .ios-step-text { font-size: 14px; color: var(--text2); line-height: 1.5; }
+  .ios-step-text strong { color: var(--text); font-weight: 500; }
+  .ios-icon-inline {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    background: var(--bg3); border-radius: 5px;
+    vertical-align: middle; margin: 0 2px;
+  }
+
+  /* Install icon in header */
+  .install-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #5DCAA5;
+    position: absolute; top: 6px; right: 6px;
+    border: 1.5px solid var(--bg);
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    padding: 8px 16px;
+    font-size: 12px; color: var(--text3);
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+    display: flex; justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     SCREEN 1 — NOTE LIST
+════════════════════════════════════ -->
+<div id="list-screen" class="screen active">
+
+  <div class="header">
+    <div class="header-row">
+      <span class="app-title">NoteVault</span>
+      <button class="icon-btn" id="btn-install" title="Install app" aria-label="Install NoteVault" style="display:none;position:relative">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="install-dot" id="install-dot"></span>
+      </button>
+      <button class="icon-btn" id="btn-drive" title="Google Drive backup" aria-label="Backup to Google Drive">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-categories" aria-label="Manage categories">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Install Banner (Android Chrome) -->
+  <div id="install-banner">
+    <div class="install-banner-icon">📝</div>
+    <div class="install-banner-text">
+      <div class="install-banner-title">Install NoteVault</div>
+      <div class="install-banner-sub">Add to home screen — works offline</div>
+    </div>
+    <button class="install-banner-btn" id="banner-install-btn">Install</button>
+    <button class="install-dismiss" id="banner-dismiss-btn" aria-label="Dismiss">×</button>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="search" id="search-input" placeholder="Search notes…" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="cat-strip" id="cat-filter-strip">
+    <div class="cat-pill active" data-cat="all">All</div>
+  </div>
+
+  <div class="stats-bar">
+    <span id="notes-count">0 notes</span>
+    <span id="last-backup">No backup yet</span>
+  </div>
+
+  <div class="note-list" id="note-list">
+    <div class="empty-state" id="empty-state">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <p>No notes yet</p>
+      <small>Tap + to create your first note</small>
+    </div>
+  </div>
+
+  <button class="fab" id="btn-new-note" aria-label="New note">+</button>
+</div>
+
+
+<!-- ════════════════════════════════════
+     SCREEN 2 — EDITOR
+════════════════════════════════════ -->
+<div id="editor-screen" class="screen">
+
+  <div class="editor-header">
+    <div class="header-row">
+      <button class="icon-btn" id="btn-back" aria-label="Back">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <input type="text" class="editor-title-input" id="note-title" placeholder="Note title…">
+      <button class="icon-btn accent" id="btn-save" aria-label="Save">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-delete-note" aria-label="Delete note">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="cat-selector" id="editor-cat-strip">
+    <span class="cat-label">Tag:</span>
+  </div>
+
+  <div class="toggle-bar">
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="btn-write" onclick="setMode('write')">Write</button>
+      <button class="toggle-btn" id="btn-preview" onclick="setMode('preview')">Preview</button>
+    </div>
+    <span class="word-count" id="word-count">0 words</span>
+  </div>
+
+  <textarea class="md-editor" id="md-editor" placeholder="Write in Markdown…&#10;&#10;# Heading&#10;**bold**, *italic*, `code`&#10;- bullet list&#10;> blockquote"></textarea>
+  <div class="md-preview hidden" id="md-preview"></div>
+
+  <div class="md-toolbar" id="md-toolbar">
+    <button class="fmt-btn" data-fmt="bold"><b>B</b></button>
+    <button class="fmt-btn" data-fmt="italic"><i>I</i></button>
+    <button class="fmt-btn" data-fmt="heading"># H</button>
+    <button class="fmt-btn" data-fmt="bullet">• List</button>
+    <button class="fmt-btn" data-fmt="numbered">1. List</button>
+    <button class="fmt-btn" data-fmt="code">`code`</button>
+    <button class="fmt-btn" data-fmt="quote">❝ Quote</button>
+    <button class="fmt-btn" data-fmt="hr">─ Line</button>
+    <button class="fmt-btn" data-fmt="link">🔗 Link</button>
+    <button class="fmt-btn" data-fmt="table">⊞ Table</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     MODALS
+════════════════════════════════════ -->
+
+<!-- Categories Modal -->
+<div class="modal-overlay" id="cat-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Manage Categories</div>
+    <div id="cat-list-modal"></div>
+    <div class="cat-add-row">
+      <input type="text" class="text-input" id="new-cat-input" placeholder="New category name…" maxlength="30">
+      <button class="btn-primary" id="btn-add-cat">Add</button>
+    </div>
+    <button class="btn-ghost" onclick="closeModal('cat-modal')">Done</button>
+  </div>
+</div>
+
+<!-- Drive Modal -->
+<div class="modal-overlay" id="drive-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      <svg style="vertical-align:-4px;margin-right:8px" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+      </svg>
+      Google Drive Backup
+    </div>
+
+    <div class="drive-section">
+      <h3>Export</h3>
+      <button class="drive-btn" id="btn-export-json" onclick="exportJSON()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="1.8">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <div class="drive-btn-text">
+          <span class="drive-btn-title">Download backup (.json)</span>
+          <span class="drive-btn-sub">Save all notes to a file, then upload to Drive</span>
+        </div>
+      </button>
+      <button class="drive-btn" id="btn-export-md" onclick="exportMarkdown()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="1.8">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <div class="drive-btn-text">
+          <span class="drive-btn-title">Export all as Markdown (.md)</span>
+          <span class="drive-btn-sub">Human-readable file for any notes app</span>
+        </div>
+      </button>
+    </div>
+
+    <div class="drive-section">
+      <h3>Import / Restore</h3>
+      <label class="drive-btn" style="cursor:pointer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BA7517" stroke-width="1.8">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drive-btn-text">
+          <span class="drive-btn-title">Restore from backup (.json)</span>
+          <span class="drive-btn-sub">Pick a NoteVault backup file to restore</span>
+        </div>
+        <input type="file" accept=".json" id="import-file" style="display:none" onchange="importJSON(event)">
+      </label>
+    </div>
+
+    <p class="backup-info" id="backup-info-text">Tip: Upload the downloaded file to your Google Drive "NoteVault" folder for WhatsApp-style backup</p>
+    <button class="btn-ghost" onclick="closeModal('drive-modal')">Close</button>
+  </div>
+</div>
+
+<!-- iOS Install Sheet -->
+<div class="modal-overlay" id="ios-sheet">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Install on iPhone / iPad</div>
+    <div class="ios-step">
+      <div class="ios-step-num">1</div>
+      <div class="ios-step-text">Tap the <strong>Share</strong> button <span class="ios-icon-inline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span> at the bottom of your Safari browser</div>
+    </div>
+    <div class="ios-step">
+      <div class="ios-step-num">2</div>
+      <div class="ios-step-text">Scroll down in the share sheet and tap <strong>"Add to Home Screen"</strong></div>
+    </div>
+    <div class="ios-step">
+      <div class="ios-step-num">3</div>
+      <div class="ios-step-text">Tap <strong>Add</strong> in the top right — NoteVault will appear on your home screen like a native app</div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:var(--accent-light);border-radius:var(--radius-sm)">
+      <p style="font-size:13px;color:var(--accent);line-height:1.5">💡 Note: This only works in <strong>Safari</strong> on iOS. Chrome on iPhone does not support PWA installation yet.</p>
+    </div>
+    <button class="btn-ghost" onclick="closeModal('ios-sheet')" style="margin-top:16px">Got it</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+const DB_KEY = 'notevault_data';
+let state = {
+  notes: [],
+  categories: ['Personal', 'Work', 'Study', 'Ideas'],
+  activeFilter: 'all',
+  searchQuery: '',
+  currentNoteId: null,
+  lastBackup: null
+};
+
+// ═══════════════════════════════════════
+//  PERSIST
+// ═══════════════════════════════════════
+function save() {
+  localStorage.setItem(DB_KEY, JSON.stringify(state));
+}
+function load() {
+  const raw = localStorage.getItem(DB_KEY);
+  if (raw) {
+    try { state = { ...state, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if (diff < 86400*7) return Math.floor(diff/86400) + 'd ago';
+  return d.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+}
+function fmtDateTime(ts) {
+  return new Date(ts).toLocaleString('en-IN', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function wordCount(txt) { return txt.trim() ? txt.trim().split(/\s+/).length : 0; }
+function plainText(md) { return md.replace(/[#*`_~>]/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').trim(); }
+function highlight(txt, q) {
+  if (!q) return txt;
+  const esc = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return txt.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+}
+function showToast(msg, dur=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function tagColor(cat) {
+  const cats = state.categories;
+  const idx = cats.indexOf(cat);
+  const classes = ['', 'teal', 'amber'];
+  return classes[idx % 3] || '';
+}
+
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════
+//  RENDER NOTE LIST
+// ═══════════════════════════════════════
+function renderList() {
+  const q = state.searchQuery.toLowerCase();
+  const cat = state.activeFilter;
+  let notes = [...state.notes].sort((a,b) => b.updatedAt - a.updatedAt);
+
+  if (cat !== 'all') notes = notes.filter(n => n.category === cat);
+  if (q) notes = notes.filter(n =>
+    n.title.toLowerCase().includes(q) ||
+    plainText(n.content).toLowerCase().includes(q)
+  );
+
+  const list = document.getElementById('note-list');
+  const empty = document.getElementById('empty-state');
+  const statsCount = document.getElementById('notes-count');
+
+  statsCount.textContent = `${state.notes.length} note${state.notes.length !== 1 ? 's' : ''}`;
+  document.getElementById('last-backup').textContent = state.lastBackup
+    ? 'Backup: ' + fmtDate(state.lastBackup)
+    : 'No backup yet';
+
+  // Remove old cards (keep empty state)
+  list.querySelectorAll('.note-card').forEach(c => c.remove());
+
+  if (notes.length === 0) {
+    empty.style.display = 'flex';
+    empty.querySelector('p').textContent = q ? 'No notes match your search' : 'No notes yet';
+    empty.querySelector('small').textContent = q ? 'Try a different search term' : 'Tap + to create your first note';
+    return;
+  }
+  empty.style.display = 'none';
+
+  notes.forEach(note => {
+    const preview = plainText(note.content);
+    const titleHl = highlight(note.title || 'Untitled', q);
+    const previewHl = highlight(preview.slice(0,120), q);
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.dataset.id = note.id;
+    card.innerHTML = `
+      <div class="note-card-top">
+        <div class="note-card-title">${titleHl || '<span style="color:var(--text3)">Untitled</span>'}</div>
+        <div class="note-card-date">${fmtDate(note.updatedAt)}</div>
+      </div>
+      <div class="note-card-preview">${previewHl || '<span style="color:var(--text3);font-style:italic">Empty note</span>'}</div>
+      <div class="note-card-footer">
+        ${note.category ? `<span class="tag-pill ${tagColor(note.category)}">${note.category}</span>` : ''}
+        <span style="font-size:11px;color:var(--text3)">${wordCount(note.content)} words</span>
+      </div>
+      <div class="delete-hint">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+        </svg>
+      </div>
+    `;
+    card.addEventListener('click', () => openNote(note.id));
+    setupSwipe(card, note.id);
+    list.appendChild(card);
+  });
+
+  renderCatFilter();
+}
+
+// ═══════════════════════════════════════
+//  SWIPE TO DELETE
+// ═══════════════════════════════════════
+function setupSwipe(card, noteId) {
+  let startX = 0, moved = false;
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    moved = false;
+  }, {passive: true});
+  card.addEventListener('touchmove', e => {
+    const dx = startX - e.touches[0].clientX;
+    if (dx > 40) { card.classList.add('swiped'); moved = true; }
+    else if (dx < -10) { card.classList.remove('swiped'); }
+  }, {passive: true});
+  card.addEventListener('touchend', () => {
+    if (moved && card.classList.contains('swiped')) {
+      if (confirm('Delete this note?')) {
+        deleteNote(noteId);
+      } else {
+        card.classList.remove('swiped');
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+//  CATEGORY FILTER STRIP
+// ═══════════════════════════════════════
+function renderCatFilter() {
+  const strip = document.getElementById('cat-filter-strip');
+  strip.innerHTML = '';
+  const cats = ['all', ...state.categories];
+  cats.forEach(c => {
+    const pill = document.createElement('div');
+    pill.className = 'cat-pill' + (state.activeFilter === c ? ' active' : '');
+    pill.textContent = c === 'all' ? 'All' : c;
+    pill.dataset.cat = c;
+    pill.addEventListener('click', () => {
+      state.activeFilter = c;
+      renderList();
+    });
+    strip.appendChild(pill);
+  });
+}
+
+// ═══════════════════════════════════════
+//  NOTE CRUD
+// ═══════════════════════════════════════
+function newNote() {
+  const note = { id: uid(), title: '', content: '', category: '', createdAt: Date.now(), updatedAt: Date.now() };
+  state.notes.unshift(note);
+  state.currentNoteId = note.id;
+  save();
+  openEditor(note);
+}
+
+function openNote(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  state.currentNoteId = id;
+  openEditor(note);
+}
+
+function openEditor(note) {
+  document.getElementById('note-title').value = note.title;
+  document.getElementById('md-editor').value = note.content;
+  updateWordCount();
+  setMode('write');
+  renderEditorCatStrip(note.category);
+  showScreen('editor-screen');
+  setTimeout(() => document.getElementById('md-editor').focus(), 100);
+}
+
+function saveCurrentNote() {
+  const note = state.notes.find(n => n.id === state.currentNoteId);
+  if (!note) return;
+  note.title = document.getElementById('note-title').value.trim();
+  note.content = document.getElementById('md-editor').value;
+  note.updatedAt = Date.now();
+  save();
+  showToast('✓ Note saved');
+}
+
+function deleteNote(id) {
+  state.notes = state.notes.filter(n => n.id !== id);
+  save();
+  if (state.currentNoteId === id) {
+    showScreen('list-screen');
+    state.currentNoteId = null;
+  }
+  renderList();
+  showToast('Note deleted');
+}
+
+// ═══════════════════════════════════════
+//  EDITOR MODE
+// ═══════════════════════════════════════
+function setMode(mode) {
+  const editor = document.getElementById('md-editor');
+  const preview = document.getElementById('md-preview');
+  const btnW = document.getElementById('btn-write');
+  const btnP = document.getElementById('btn-preview');
+  const toolbar = document.getElementById('md-toolbar');
+
+  if (mode === 'write') {
+    editor.classList.remove('hidden');
+    preview.classList.add('hidden');
+    btnW.classList.add('active'); btnP.classList.remove('active');
+    toolbar.style.display = 'flex';
+    editor.focus();
+  } else {
+    preview.innerHTML = marked.parse(editor.value || '*Empty note*');
+    editor.classList.add('hidden');
+    preview.classList.remove('hidden');
+    btnP.classList.add('active'); btnW.classList.remove('active');
+    toolbar.style.display = 'none';
+  }
+}
+
+function updateWordCount() {
+  const txt = document.getElementById('md-editor').value;
+  document.getElementById('word-count').textContent = wordCount(txt) + ' words';
+}
+document.getElementById('md-editor').addEventListener('input', updateWordCount);
+document.getElementById('note-title').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('md-editor').focus();
+});
+
+// ═══════════════════════════════════════
+//  MARKDOWN TOOLBAR
+// ═══════════════════════════════════════
+const fmtMap = {
+  bold: { wrap: ['**','**'] },
+  italic: { wrap: ['*','*'] },
+  heading: { prefix: '# ' },
+  bullet: { prefix: '- ' },
+  numbered: { prefix: '1. ' },
+  code: { wrap: ['`','`'] },
+  quote: { prefix: '> ' },
+  hr: { insert: '\n---\n' },
+  link: { wrap: ['[','](url)'] },
+  table: { insert: '\n| Column 1 | Column 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |\n' }
+};
+document.querySelectorAll('.fmt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ta = document.getElementById('md-editor');
+    const fmt = fmtMap[btn.dataset.fmt];
+    if (!fmt) return;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = ta.value.slice(start, end);
+    let newText, cursor;
+    if (fmt.insert) {
+      newText = ta.value.slice(0,start) + fmt.insert + ta.value.slice(end);
+      cursor = start + fmt.insert.length;
+    } else if (fmt.wrap) {
+      const [pre, post] = fmt.wrap;
+      const ins = pre + (sel || 'text') + post;
+      newText = ta.value.slice(0,start) + ins + ta.value.slice(end);
+      cursor = start + pre.length + (sel || 'text').length + post.length;
+    } else if (fmt.prefix) {
+      const ins = fmt.prefix + (sel || '');
+      newText = ta.value.slice(0,start) + ins + ta.value.slice(end);
+      cursor = start + ins.length;
+    }
+    ta.value = newText;
+    ta.selectionStart = ta.selectionEnd = cursor;
+    ta.focus();
+    updateWordCount();
+  });
+});
+
+// ═══════════════════════════════════════
+//  CATEGORY MANAGEMENT
+// ═══════════════════════════════════════
+function renderEditorCatStrip(selected) {
+  const strip = document.getElementById('editor-cat-strip');
+  strip.innerHTML = '<span class="cat-label">Tag:</span>';
+  const opts = ['', ...state.categories];
+  opts.forEach(c => {
+    const pill = document.createElement('div');
+    pill.className = 'cat-pill' + ((selected || '') === c ? ' active' : '');
+    pill.textContent = c || 'None';
+    pill.style.fontSize = '12px';
+    pill.addEventListener('click', () => {
+      const note = state.notes.find(n => n.id === state.currentNoteId);
+      if (note) { note.category = c; save(); }
+      renderEditorCatStrip(c);
+    });
+    strip.appendChild(pill);
+  });
+}
+
+function renderCatModal() {
+  const div = document.getElementById('cat-list-modal');
+  div.innerHTML = '';
+  state.categories.forEach(c => {
+    const count = state.notes.filter(n => n.category === c).length;
+    const row = document.createElement('div');
+    row.className = 'cat-item';
+    row.innerHTML = `
+      <div>
+        <div class="cat-item-name">${c}</div>
+        <div class="cat-item-count">${count} note${count !== 1 ? 's' : ''}</div>
+      </div>
+      <button class="btn-danger" data-cat="${c}">Remove</button>
+    `;
+    row.querySelector('.btn-danger').addEventListener('click', () => {
+      if (state.notes.some(n => n.category === c)) {
+        if (!confirm(`Remove category "${c}"? Notes will become untagged.`)) return;
+        state.notes.forEach(n => { if (n.category === c) n.category = ''; });
+      }
+      state.categories = state.categories.filter(x => x !== c);
+      save(); renderCatModal(); renderList();
+    });
+    div.appendChild(row);
+  });
+}
+
+document.getElementById('btn-add-cat').addEventListener('click', () => {
+  const inp = document.getElementById('new-cat-input');
+  const val = inp.value.trim();
+  if (!val || state.categories.includes(val)) {
+    showToast(val ? 'Category already exists' : 'Enter a category name');
+    return;
+  }
+  state.categories.push(val);
+  inp.value = '';
+  save(); renderCatModal(); renderList();
+});
+document.getElementById('new-cat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-add-cat').click();
+});
+
+// ═══════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════
+document.getElementById('search-input').addEventListener('input', e => {
+  state.searchQuery = e.target.value;
+  renderList();
+});
+
+// ═══════════════════════════════════════
+//  DRIVE / EXPORT / IMPORT
+// ═══════════════════════════════════════
+function exportJSON() {
+  const data = JSON.stringify({ version: 1, exportedAt: Date.now(), notes: state.notes, categories: state.categories }, null, 2);
+  download('NoteVault_backup_' + new Date().toISOString().slice(0,10) + '.json', data, 'application/json');
+  state.lastBackup = Date.now();
+  save();
+  renderList();
+  showToast('✓ Backup downloaded — upload to Google Drive');
+}
+
+function exportMarkdown() {
+  const lines = state.notes.map(n =>
+    `# ${n.title || 'Untitled'}\n_Category: ${n.category || 'None'} · ${fmtDateTime(n.updatedAt)}_\n\n${n.content}\n\n---\n`
+  ).join('\n');
+  download('NoteVault_export_' + new Date().toISOString().slice(0,10) + '.md', lines, 'text/markdown');
+  showToast('✓ Markdown export downloaded');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.notes || !Array.isArray(data.notes)) throw new Error('Invalid file');
+      const merge = confirm(`Found ${data.notes.length} notes.\n\nMerge with existing notes, or replace all?\n\nOK = Merge  |  Cancel = Replace`);
+      if (merge) {
+        const existing = new Set(state.notes.map(n => n.id));
+        data.notes.forEach(n => { if (!existing.has(n.id)) state.notes.push(n); });
+        if (data.categories) {
+          data.categories.forEach(c => { if (!state.categories.includes(c)) state.categories.push(c); });
+        }
+      } else {
+        state.notes = data.notes;
+        if (data.categories) state.categories = data.categories;
+      }
+      save(); renderList(); closeModal('drive-modal');
+      showToast(`✓ Restored ${data.notes.length} notes`);
+    } catch(err) {
+      showToast('Error: Invalid backup file');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function download(name, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type}));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ═══════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════
+document.getElementById('btn-new-note').addEventListener('click', newNote);
+document.getElementById('btn-back').addEventListener('click', () => {
+  saveCurrentNote();
+  showScreen('list-screen');
+  renderList();
+});
+document.getElementById('btn-save').addEventListener('click', () => {
+  saveCurrentNote();
+  showScreen('list-screen');
+  renderList();
+});
+document.getElementById('btn-delete-note').addEventListener('click', () => {
+  if (confirm('Delete this note?')) deleteNote(state.currentNoteId);
+});
+document.getElementById('btn-categories').addEventListener('click', () => {
+  renderCatModal();
+  openModal('cat-modal');
+});
+document.getElementById('btn-drive').addEventListener('click', () => {
+  openModal('drive-modal');
+});
+
+// Auto-save every 30s while editing
+setInterval(() => {
+  if (document.getElementById('editor-screen').classList.contains('active')) {
+    const note = state.notes.find(n => n.id === state.currentNoteId);
+    if (note) {
+      note.title = document.getElementById('note-title').value.trim();
+      note.content = document.getElementById('md-editor').value;
+      note.updatedAt = Date.now();
+      save();
+    }
+  }
+}, 30000);
+
+// ═══════════════════════════════════════
+//  PWA INSTALL LOGIC
+// ═══════════════════════════════════════
+let deferredPrompt = null;
+const installBtn = document.getElementById('btn-install');
+const installBanner = document.getElementById('install-banner');
+const bannerInstallBtn = document.getElementById('banner-install-btn');
+const bannerDismissBtn = document.getElementById('banner-dismiss-btn');
+const installDot = document.getElementById('install-dot');
+
+// Detect if already installed as PWA
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+// Detect iOS
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+function showInstallUI() {
+  installBtn.style.display = 'flex';
+  installDot.style.display = 'block';
+  if (!localStorage.getItem('nv_banner_dismissed')) {
+    installBanner.classList.add('visible');
+  }
+}
+
+function hideInstallUI() {
+  installBtn.style.display = 'none';
+  installBanner.classList.remove('visible');
+}
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(result => {
+      if (result.outcome === 'accepted') {
+        showToast('✓ NoteVault installed — find it on your home screen!');
+        hideInstallUI();
+        localStorage.setItem('nv_installed', '1');
+      }
+      deferredPrompt = null;
+    });
+  } else if (isIOS && isSafari) {
+    openModal('ios-sheet');
+  } else if (isIOS) {
+    showToast('Open NoteVault in Safari to install it');
+  } else {
+    showToast('Open in Chrome on Android to install');
+  }
+}
+
+// Android Chrome: capture the install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!isStandalone && !localStorage.getItem('nv_installed')) {
+    showInstallUI();
+  }
+});
+
+// App installed successfully
+window.addEventListener('appinstalled', () => {
+  hideInstallUI();
+  showToast('✓ NoteVault added to home screen!');
+  localStorage.setItem('nv_installed', '1');
+  deferredPrompt = null;
+});
+
+// iOS: show install button in Safari only (no beforeinstallprompt on iOS)
+if (isIOS && isSafari && !isStandalone && !localStorage.getItem('nv_installed')) {
+  showInstallUI();
+}
+
+// Button events
+installBtn.addEventListener('click', triggerInstall);
+bannerInstallBtn.addEventListener('click', triggerInstall);
+bannerDismissBtn.addEventListener('click', () => {
+  installBanner.classList.remove('visible');
+  localStorage.setItem('nv_banner_dismissed', '1');
+});
+
+// ═══════════════════════════════════════
+//  PWA MANIFEST (inline)
+// ═══════════════════════════════════════
+const manifest = {
+  name: 'NoteVault',
+  short_name: 'NoteVault',
+  description: 'Markdown notes with Google Drive backup',
+  start_url: '.',
+  display: 'standalone',
+  background_color: '#534AB7',
+  theme_color: '#534AB7',
+  icons: [{ src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23534AB7"/><text y=".9em" font-size="80" x="10">📝</text></svg>', sizes: '192x192', type: 'image/svg+xml' }]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
+document.getElementById('manifest-link').href = URL.createObjectURL(blob);
+
+// ═══════════════════════════════════════
+//  SERVICE WORKER (inline registration)
+// ═══════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE = 'notevault-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll([self.location.pathname])));
+      self.skipWaiting();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `;
+  const swBlob = new Blob([swCode], {type: 'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL).catch(() => {});
+}
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+load();
+// Add sample note for first-time users
+if (state.notes.length === 0) {
+  state.notes.push({
+    id: uid(),
+    title: 'Welcome to NoteVault 👋',
+    content: `# Welcome to NoteVault\n\nYour **Markdown** note app with Google Drive backup.\n\n## Features\n- ✅ Plain text + **Markdown** support\n- ✅ Categories & tags\n- ✅ Full-text search\n- ✅ Google Drive backup (download + upload)\n- ✅ Works offline as a PWA\n\n## Markdown Quick Reference\n\n**Bold**, *italic*, \`inline code\`\n\n> Blockquote for important thoughts\n\n\`\`\`\ncode block\n\`\`\`\n\n---\n\nSwipe left on a note to delete it. Tap the grid icon to manage categories.\n`,
+    category: 'Personal',
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  save();
+}
+renderList();
+</script>
+</body>
+</html>
