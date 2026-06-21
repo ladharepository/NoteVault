@@ -16,27 +16,51 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script>
 (function () {
-  // PWA logo — reference the uploaded image from the repository root.
-  // Place ChatGPT_Image_Jun_21__2026__08_19_24_PM.png in the root of your
-  // GitHub Pages / hosting repo and it will be used automatically.
-  const LOGO_URL = 'ChatGPT_Image_Jun_21__2026__08_19_24_PM.png';
+  // ── App icon: notes-svgrepo-com.svg (svgrepo.com/svg/14796/notes) ──────────
+  const APP_ICON_SVG = `<?xml version="1.0" encoding="iso-8859-1"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xml:space="preserve">
+<circle style="fill:#FF2746;" cx="256" cy="256" r="256"/>
+<path style="fill:#940030;" d="M512,256c0-3.043-0.072-6.068-0.178-9.085l-93.775-93.775L113.778,398.222L225.77,510.214C235.685,511.381,245.77,512,256,512C397.384,512,512,397.384,512,256z"/>
+<polygon style="fill:#FFAD9E;" points="378.685,113.778 227.556,113.778 227.556,312.889 426.667,312.889 426.667,161.759 "/>
+<polygon style="fill:#D3857A;" points="426.667,161.759 378.685,113.778 316.912,113.778 316.912,312.889 426.667,312.889 "/>
+<polygon style="fill:#FFFFFF;" points="378.685,161.759 426.667,161.759 378.685,113.778 "/>
+<polygon style="fill:#FFC61B;" points="264.907,199.111 113.778,199.111 113.778,398.222 312.889,398.222 312.889,247.093 "/>
+<polygon style="fill:#D48B07;" points="312.889,247.093 264.907,199.111 205.433,199.111 205.433,398.222 312.889,398.222 "/>
+<polygon style="fill:#FEE187;" points="264.907,247.093 312.889,247.093 264.907,199.111 "/>
+<g>
+<rect x="142.222" y="267.636" style="fill:#121149;" width="142.222" height="10.343"/>
+<rect x="142.222" y="344.35" style="fill:#121149;" width="142.222" height="10.343"/>
+<rect x="142.222" y="305.993" style="fill:#121149;" width="142.222" height="10.343"/>
+</g>
+</svg>`;
 
-  // Set favicon
+  const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(APP_ICON_SVG);
+
+  // Chrome tab favicon — SVG works natively in Chrome/Edge/Firefox
   const favicon = document.createElement('link');
   favicon.rel = 'icon';
-  favicon.type = 'image/png';
-  favicon.href = LOGO_URL;
+  favicon.type = 'image/svg+xml';
+  favicon.href = svgDataUrl;
   document.head.appendChild(favicon);
 
-  // Apple touch icon
-  const apple = document.createElement('link');
-  apple.rel = 'apple-touch-icon';
-  apple.href = LOGO_URL;
-  document.head.appendChild(apple);
+  // Rasterise to PNG for Apple touch icon (Safari doesn't support SVG icons)
+  const img = new Image();
+  img.onload = function () {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    canvas.getContext('2d').drawImage(img, 0, 0, 512, 512);
+    const pngUrl = canvas.toDataURL('image/png');
+    window.__appIconPng = pngUrl;
+    const apple = document.createElement('link');
+    apple.rel = 'apple-touch-icon';
+    apple.href = pngUrl;
+    document.head.appendChild(apple);
+  };
+  img.src = svgDataUrl;
 
-  // Expose for manifest generator below
-  window.__appIconPng = LOGO_URL;
-  window.__appIconSvg = null;
+  // Expose SVG data URL for the PWA manifest generator below
+  window.__appIconSvgUrl = svgDataUrl;
+  window.__appIconPng = svgDataUrl; // fallback until canvas resolves
 })();
 </script>
 
@@ -3207,14 +3231,22 @@ const MANIFEST = {
   description: 'Premium rich text notes with cloud sync',
   start_url: '.',
   display: 'standalone',
-  background_color: '#0D1B2A',
+  background_color: '#FF2746',
   theme_color: '#2563EB',
-  icons: [{
-    src: window.__appIconPng || 'ChatGPT_Image_Jun_21__2026__08_19_24_PM.png',
-    sizes: '512x512',
-    type: 'image/png',
-    purpose: 'any maskable'
-  }]
+  icons: [
+    {
+      src: window.__appIconSvgUrl || window.__appIconPng,
+      sizes: '512x512',
+      type: 'image/svg+xml',
+      purpose: 'any'
+    },
+    {
+      src: window.__appIconPng,
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable'
+    }
+  ]
 };
 const manifestBlob = new Blob([JSON.stringify(MANIFEST)], { type: 'application/manifest+json' });
 const manifestUrl = URL.createObjectURL(manifestBlob);
