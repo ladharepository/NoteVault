@@ -69,20 +69,30 @@ function initFirebase() {
     window.__fbStatus = 'connecting';
     updateSyncBadge();
 
+   onAuthStateChanged(auth, user => {
+
+  if (user) {
+
+    userId = user.uid;
+
+    window.__fbStatus = 'online';
+    updateSyncBadge();
+
+    startRealTimeSync();
+
+  } else {
+
     const provider = new GoogleAuthProvider();
-      signInWithPopup(auth, provider)
-        .catch(() => {
-          window.__fbStatus = 'error';
-          updateSyncBadge();
-        });
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        userId = user.uid;
-        window.__fbStatus = 'online';
+
+    signInWithPopup(auth, provider)
+      .catch(() => {
+        window.__fbStatus = 'error';
         updateSyncBadge();
-        startRealTimeSync();
-      }
-    });
+      });
+
+  }
+
+});
   } catch(e) { window.__fbStatus = 'error'; updateSyncBadge(); }
 }
 
