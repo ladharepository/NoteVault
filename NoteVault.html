@@ -16,49 +16,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script>
 (function () {
-  // App icon source — single SVG used to generate favicon, apple-touch-icon,
-  // and the PWA manifest icon below.
-  const APP_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#2563EB"/>
-  <text x="50%" y="54%" text-anchor="middle"
-        font-size="260"
-        fill="white"
-        font-family="Inter, Arial, sans-serif">
-    ✦
-  </text>
-</svg>`;
+  // PWA logo — reference the uploaded image from the repository root.
+  // Place ChatGPT_Image_Jun_21__2026__08_19_24_PM.png in the root of your
+  // GitHub Pages / hosting repo and it will be used automatically.
+  const LOGO_URL = 'ChatGPT_Image_Jun_21__2026__08_19_24_PM.png';
 
-  // Expose the raw SVG for the manifest generator further down the page.
-  window.__appIconSvg = APP_ICON_SVG;
+  // Set favicon
+  const favicon = document.createElement('link');
+  favicon.rel = 'icon';
+  favicon.type = 'image/png';
+  favicon.href = LOGO_URL;
+  document.head.appendChild(favicon);
 
-  const svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(APP_ICON_SVG);
+  // Apple touch icon
+  const apple = document.createElement('link');
+  apple.rel = 'apple-touch-icon';
+  apple.href = LOGO_URL;
+  document.head.appendChild(apple);
 
-  // Render the SVG onto a canvas so we can emit a PNG data URL — PNG has the
-  // broadest support for favicons and (especially) apple-touch-icon.
-  const img = new Image();
-  img.onload = function () {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, 512, 512);
-    const pngUrl = canvas.toDataURL("image/png");
-    window.__appIconPng = pngUrl;
-
-    // Set favicon
-    const favicon = document.createElement("link");
-    favicon.rel = "icon";
-    favicon.type = "image/png";
-    favicon.href = pngUrl;
-    document.head.appendChild(favicon);
-
-    // Apple icon
-    const apple = document.createElement("link");
-    apple.rel = "apple-touch-icon";
-    apple.href = pngUrl;
-    document.head.appendChild(apple);
-  };
-  img.src = svgUrl;
+  // Expose for manifest generator below
+  window.__appIconPng = LOGO_URL;
+  window.__appIconSvg = null;
 })();
 </script>
 
@@ -710,7 +688,7 @@ a { color: var(--accent); }
 
 @media (max-width: 768px) {
   #note-list-inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1362,6 +1340,64 @@ kbd {
 
 /* Scrollbar global */
 * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+
+/* ═══════════════════════════════════════════════════════════════
+   FAB — Android-only floating action button (Create Note)
+═══════════════════════════════════════════════════════════════ */
+#fab-new-note {
+  display: none;
+}
+@media (max-width: 768px) {
+  #fab-new-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 16px rgba(37,99,235,.45), 0 2px 6px rgba(0,0,0,.2);
+    z-index: 50;
+    border: none;
+    cursor: pointer;
+    transition: background var(--transition), transform .12s, box-shadow .12s;
+  }
+  #fab-new-note:hover { background: var(--accent-h); }
+  #fab-new-note:active { transform: scale(.92); box-shadow: 0 2px 8px rgba(37,99,235,.35); }
+  /* Hide FAB when editor is open */
+  body.editor-open #fab-new-note { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FONT FACE & SIZE SELECTS in editor toolbar
+═══════════════════════════════════════════════════════════════ */
+.md-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 4px 24px 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  outline: none;
+  font-family: var(--font);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239CA3AF'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  transition: border-color .15s, background-color .15s, color .15s;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.md-select:hover { border-color: var(--accent); color: var(--text); background-color: var(--surface2); }
+.md-select:focus { border-color: var(--accent); color: var(--text); }
+.md-select option { background: var(--surface); color: var(--text); font-family: inherit; }
 </style>
 </head>
 <body>
@@ -1468,6 +1504,13 @@ kbd {
     </div>
   </div>
 
+  <!-- ══ FAB — Android floating create button ══════════════ -->
+  <button id="fab-new-note" title="New note" aria-label="Create new note">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+
   <!-- ══ EDITOR PANEL ════════════════════════════════ -->
   <div id="editor-panel">
 
@@ -1524,6 +1567,30 @@ kbd {
       </div>
 
       <div class="md-toolbar" id="md-toolbar">
+        <select class="md-select" id="font-face-select" title="Font face">
+          <option value="">Default</option>
+          <option value="Inter, sans-serif">Inter</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="'Fira Mono', monospace">Fira Mono</option>
+          <option value="'Arial', sans-serif">Arial</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        </select>
+        <select class="md-select" id="font-size-select" title="Font size" style="min-width:60px">
+          <option value="">Size</option>
+          <option value="12px">12</option>
+          <option value="13px">13</option>
+          <option value="14px">14</option>
+          <option value="15px">15</option>
+          <option value="16px">16</option>
+          <option value="18px">18</option>
+          <option value="20px">20</option>
+          <option value="24px">24</option>
+          <option value="28px">28</option>
+          <option value="32px">32</option>
+        </select>
+        <div class="md-divider"></div>
         <button class="md-btn" data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
         <button class="md-btn" data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
         <button class="md-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
@@ -2271,6 +2338,8 @@ async function newNote() {
   if (isMobile) {
     document.getElementById('editor-panel').classList.add('active-mobile');
     document.getElementById('note-list-panel').classList.add('hidden-mobile');
+    document.body.classList.add('editor-open');
+    pushEditorHistory();
   }
   // Focus title if empty, otherwise focus the content editor
   setTimeout(() => {
@@ -2292,6 +2361,8 @@ async function openNote(id) {
   if (isMobile) {
     document.getElementById('editor-panel').classList.add('active-mobile');
     document.getElementById('note-list-panel').classList.add('hidden-mobile');
+    document.body.classList.add('editor-open');
+    pushEditorHistory();
   }
 }
 
@@ -2660,7 +2731,81 @@ function scheduleSave() {
   }, 1200);
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  FONT FACE & SIZE — Quill inline style via attributors
+// ═══════════════════════════════════════════════════════════════
+(function registerQuillFontFormats() {
+  // Use Quill's built-in style attributors for font-family and font-size
+  const Parchment = Quill.import('parchment');
+  const FontStyle = new Parchment.StyleAttributor('fontFamily', 'font-family', { scope: Parchment.Scope.INLINE });
+  const SizeStyle = new Parchment.StyleAttributor('fontSize', 'font-size', { scope: Parchment.Scope.INLINE });
+  Quill.register(FontStyle, true);
+  Quill.register(SizeStyle, true);
+})();
+
 initEditor();
+
+// Wire up font face selector
+(function() {
+  const fontSel = document.getElementById('font-face-select');
+  const sizeSel = document.getElementById('font-size-select');
+
+  fontSel.addEventListener('mousedown', e => e.stopPropagation());
+  sizeSel.addEventListener('mousedown', e => e.stopPropagation());
+
+  fontSel.addEventListener('change', () => {
+    if (!quill) return;
+    const val = fontSel.value;
+    const range = quill.getSelection();
+    if (range && range.length > 0) {
+      quill.format('fontFamily', val || false);
+    } else {
+      // Apply to whole document when nothing selected
+      quill.formatText(0, quill.getLength(), 'fontFamily', val || false);
+    }
+    quill.focus();
+    scheduleSave();
+  });
+
+  sizeSel.addEventListener('change', () => {
+    if (!quill) return;
+    const val = sizeSel.value;
+    const range = quill.getSelection();
+    if (range && range.length > 0) {
+      quill.format('fontSize', val || false);
+    } else {
+      quill.formatText(0, quill.getLength(), 'fontSize', val || false);
+    }
+    quill.focus();
+    scheduleSave();
+  });
+
+  // Reflect current format in dropdowns on selection change
+  const origUpdateToolbar = updateToolbarState;
+  window.updateToolbarState = function() {
+    origUpdateToolbar();
+    if (!quill) return;
+    const range = quill.getSelection();
+    const fmt = range ? quill.getFormat(range) : {};
+    if (fmt.fontFamily) {
+      fontSel.value = fmt.fontFamily;
+    } else {
+      fontSel.value = '';
+    }
+    if (fmt.fontSize) {
+      sizeSel.value = fmt.fontSize;
+    } else {
+      sizeSel.value = '';
+    }
+  };
+  // Patch quill selection-change listener already set in initEditor
+  quill && quill.on('selection-change', () => window.updateToolbarState());
+})();
+
+// ═══════════════════════════════════════════════════════════════
+//  FAB BUTTON — Android floating action button
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('fab-new-note').addEventListener('click', newNote);
 
 document.getElementById('note-title').addEventListener('input', scheduleSave);
 document.getElementById('note-title').addEventListener('keydown', e => {
@@ -3035,10 +3180,12 @@ document.getElementById('btn-fav').addEventListener('click', () => { if (state.c
 document.getElementById('btn-duplicate').addEventListener('click', () => { if (state.currentNoteId) duplicateNote(state.currentNoteId); });
 document.getElementById('btn-delete').addEventListener('click', () => { if (state.currentNoteId && confirm('Delete this note?')) deleteNote(state.currentNoteId); });
 document.getElementById('btn-editor-back').addEventListener('click', () => {
-  flushCurrentNote().then(() => {
-    document.getElementById('editor-panel').classList.remove('active-mobile');
-    document.getElementById('note-list-panel').classList.remove('hidden-mobile');
-  });
+  // Consume the sentinel history entry so popstate doesn't fire again
+  if (isMobile && history.state && history.state.nvEditor) {
+    history.back(); // this triggers popstate → goBackToNoteList
+  } else {
+    goBackToNoteList();
+  }
 });
 document.getElementById('btn-mobile-menu').addEventListener('click', () => toggleSidebar());
 document.getElementById('sidebar-overlay').addEventListener('click', () => {
@@ -3060,12 +3207,12 @@ const MANIFEST = {
   description: 'Premium rich text notes with cloud sync',
   start_url: '.',
   display: 'standalone',
-  background_color: '#FAFAFA',
+  background_color: '#0D1B2A',
   theme_color: '#2563EB',
   icons: [{
-    src: window.__appIconSvg ? ('data:image/svg+xml,' + encodeURIComponent(window.__appIconSvg)) : window.__appIconPng,
+    src: window.__appIconPng || 'ChatGPT_Image_Jun_21__2026__08_19_24_PM.png',
     sizes: '512x512',
-    type: 'image/svg+xml',
+    type: 'image/png',
     purpose: 'any maskable'
   }]
 };
@@ -3134,6 +3281,35 @@ document.getElementById('btn-install').addEventListener('click', async () => {
 document.getElementById('btn-install-dismiss').addEventListener('click', () => {
   document.getElementById('install-banner').style.display = 'none';
   localStorage.setItem('nv_install_dismissed', '1');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  ANDROID HARDWARE BACK — intercept via History API
+//  When the editor is open on mobile, push a sentinel history
+//  entry. Android's back gesture fires "popstate" — we catch it
+//  and navigate back to the note list instead of exiting the app.
+// ═══════════════════════════════════════════════════════════════
+function pushEditorHistory() {
+  if (isMobile) {
+    history.pushState({ nvEditor: true }, '');
+  }
+}
+
+function goBackToNoteList() {
+  flushCurrentNote().then(() => {
+    document.getElementById('editor-panel').classList.remove('active-mobile');
+    document.getElementById('note-list-panel').classList.remove('hidden-mobile');
+    document.body.classList.remove('editor-open');
+  });
+}
+
+window.addEventListener('popstate', (e) => {
+  // Only intercept when the editor is visibly open on mobile
+  if (isMobile && document.getElementById('editor-panel').classList.contains('active-mobile')) {
+    goBackToNoteList();
+    // Re-push the base state so a second back press exits the app normally
+    // (don't push again — let the stack drain naturally)
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
