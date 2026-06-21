@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="NoteVault">
-<meta name="description" content="Premium note-taking with sync, markdown, and offline support">
+<meta name="description" content="Premium note-taking with sync, rich text, and offline support">
 <title>NoteVault</title>
 <link rel="icon" href="data:,"> 
 <link rel="manifest" id="manifest-link">
@@ -16,40 +16,57 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script>
 (function () {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
+  // App icon source — single SVG used to generate favicon, apple-touch-icon,
+  // and the PWA manifest icon below.
+  const APP_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#2563EB"/>
+  <text x="50%" y="54%" text-anchor="middle"
+        font-size="260"
+        fill="white"
+        font-family="Inter, Arial, sans-serif">
+    ✦
+  </text>
+</svg>`;
 
-  const ctx = canvas.getContext("2d");
+  // Expose the raw SVG for the manifest generator further down the page.
+  window.__appIconSvg = APP_ICON_SVG;
 
-  // Background
-  ctx.fillStyle = "#2563EB";
-  ctx.beginPath();
-  ctx.roundRect(0, 0, 512, 512, 100);
-  ctx.fill();
+  const svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(APP_ICON_SVG);
 
-  // Letter N
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 320px Inter, Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("N", 256, 285);
+  // Render the SVG onto a canvas so we can emit a PNG data URL — PNG has the
+  // broadest support for favicons and (especially) apple-touch-icon.
+  const img = new Image();
+  img.onload = function () {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, 512, 512);
+    const pngUrl = canvas.toDataURL("image/png");
+    window.__appIconPng = pngUrl;
 
-  // Set favicon
-  const favicon = document.createElement("link");
-  favicon.rel = "icon";
-  favicon.href = canvas.toDataURL("image/png");
-  document.head.appendChild(favicon);
+    // Set favicon
+    const favicon = document.createElement("link");
+    favicon.rel = "icon";
+    favicon.type = "image/png";
+    favicon.href = pngUrl;
+    document.head.appendChild(favicon);
 
-  // Apple icon
-  const apple = document.createElement("link");
-  apple.rel = "apple-touch-icon";
-  apple.href = canvas.toDataURL("image/png");
-  document.head.appendChild(apple);
+    // Apple icon
+    const apple = document.createElement("link");
+    apple.rel = "apple-touch-icon";
+    apple.href = pngUrl;
+    document.head.appendChild(apple);
+  };
+  img.src = svgUrl;
 })();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<!-- Rich text editor (Quill) — replaces the old Markdown textarea editor -->
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.core.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 
 <!-- Firebase -->
 <script type="module">
@@ -242,7 +259,7 @@ initFirebase();
   --font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono:        'Fira Mono', 'JetBrains Mono', 'Consolas', monospace;
   --sidebar-w:   260px;
-  --list-w:      320px;
+  --list-w:      560px;
   --transition:  0.18s ease;
 }
 
@@ -603,22 +620,31 @@ a { color: var(--accent); }
 .note-list-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 10px;
+  padding: 12px;
 }
 .note-list-scroll::-webkit-scrollbar { width: 3px; }
 .note-list-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+#note-list-inner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
 .note-item {
-  padding: 12px 12px;
-  border-radius: var(--radius);
+  padding: 14px 14px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  margin-bottom: 2px;
-  transition: background var(--transition);
+  transition: background var(--transition), box-shadow var(--transition), border-color var(--transition), transform .1s;
   position: relative;
   user-select: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
-.note-item:hover { background: var(--surface2); }
-.note-item.selected { background: var(--accent-bg); }
+.note-item:hover { background: var(--surface2); box-shadow: var(--shadow); transform: translateY(-1px); }
+.note-item.selected { background: var(--accent-bg); border-color: var(--accent); box-shadow: var(--shadow); }
 .note-item.selected .note-item-title { color: var(--accent); }
 .note-item-title {
   font-size: 13px;
@@ -634,6 +660,7 @@ a { color: var(--accent); }
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 .note-item-date { font-size: 11px; color: var(--text3); }
 .note-item-tag {
@@ -675,10 +702,17 @@ a { color: var(--accent); }
   padding: 60px 20px;
   text-align: center;
   color: var(--text3);
+  grid-column: 1 / -1;
 }
 .note-list-empty svg { opacity: .25; }
 .note-list-empty p { font-size: 14px; font-weight: 500; color: var(--text2); }
 .note-list-empty small { font-size: 12px; }
+
+@media (max-width: 768px) {
+  #note-list-inner {
+    grid-template-columns: 1fr;
+  }
+}
 
 mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; }
 [data-theme="dark"] mark { background: #713F12; color: #FEF08A; }
@@ -728,25 +762,6 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
 .tool-btn:hover { background: var(--surface2); color: var(--text); }
 .tool-btn.active { background: var(--accent-bg); color: var(--accent); }
 .tool-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
-
-.view-toggle {
-  display: flex;
-  background: var(--surface2);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-}
-.view-btn {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all .15s;
-  border: none;
-  background: none;
-}
-.view-btn.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-sm); }
 
 .save-status {
   font-size: 11px;
@@ -811,7 +826,7 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
 
 .word-count-badge { font-size: 11px; color: var(--text3); margin-left: auto; }
 
-/* Markdown toolbar */
+/* Rich text toolbar */
 .md-toolbar {
   display: flex;
   gap: 2px;
@@ -824,7 +839,7 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
 }
 .md-toolbar::-webkit-scrollbar { display: none; }
 .md-btn {
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 500;
@@ -838,7 +853,48 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
   line-height: 1.4;
 }
 .md-btn:hover { background: var(--surface2); color: var(--text); }
+.md-btn.active { background: var(--accent-bg); color: var(--accent); }
 .md-divider { width: 1px; background: var(--border); margin: 2px 4px; flex-shrink: 0; }
+
+/* Link popover (used by the rich text editor's Link button) */
+.link-popover {
+  position: fixed;
+  z-index: 999;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  box-shadow: var(--shadow-lg);
+  animation: cmdIn .15s ease;
+}
+.link-popover-input {
+  width: 220px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  font-family: var(--font);
+}
+.link-popover-input:focus { border-color: var(--accent); }
+.link-popover button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.link-popover-apply { background: var(--accent); color: #fff; }
+.link-popover-apply:hover { background: var(--accent-h); }
+.link-popover-remove { background: var(--surface2); color: var(--danger); }
+.link-popover-remove:hover { background: var(--danger-bg); }
 
 /* Writing area */
 .writing-area {
@@ -848,57 +904,73 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
   overflow: hidden;
   position: relative;
 }
-.md-editor {
-  flex: 1;
+.writing-area .ql-container {
   border: none;
-  outline: none;
-  resize: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font);
+}
+.writing-area .ql-editor {
+  flex: 1;
   padding: 24px 32px;
   font-size: 15px;
   line-height: 1.75;
   color: var(--text);
   background: var(--surface);
-  font-family: var(--mono);
+  font-family: var(--font);
   overflow-y: auto;
   caret-color: var(--accent);
 }
-.md-editor::-webkit-scrollbar { width: 4px; }
-.md-editor::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.ql-editor::-webkit-scrollbar { width: 4px; }
+.ql-editor::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-.md-preview {
-  flex: 1;
-  padding: 24px 32px;
-  overflow-y: auto;
-  background: var(--surface);
-  display: none;
-  max-width: 100%;
+.ql-editor.ql-blank::before {
+  color: var(--text3);
+  font-style: normal;
+  left: 32px;
+  right: 32px;
+  font-size: 15px;
 }
-.md-preview::-webkit-scrollbar { width: 4px; }
-.md-preview::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-/* Preview typography */
-.md-preview h1 { font-size: 24px; font-weight: 600; margin: 0 0 16px; color: var(--text); letter-spacing: -.4px; line-height: 1.3; }
-.md-preview h2 { font-size: 19px; font-weight: 600; margin: 28px 0 12px; color: var(--text); letter-spacing: -.3px; }
-.md-preview h3 { font-size: 16px; font-weight: 600; margin: 22px 0 8px; color: var(--text); }
-.md-preview h4 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; color: var(--text); }
-.md-preview p { margin: 0 0 14px; color: var(--text); line-height: 1.75; font-size: 15px; }
-.md-preview ul, .md-preview ol { margin: 0 0 14px 22px; color: var(--text); line-height: 1.75; font-size: 15px; }
-.md-preview li { margin-bottom: 4px; }
-.md-preview li input[type=checkbox] { margin-right: 6px; accent-color: var(--accent); }
-.md-preview code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); font-size: 13px; color: var(--accent); border: 1px solid var(--border); }
-.md-preview pre { background: var(--surface2); padding: 16px 18px; border-radius: var(--radius); margin: 0 0 16px; overflow-x: auto; border: 1px solid var(--border); }
-.md-preview pre code { background: none; padding: 0; color: var(--text2); border: none; font-size: 13px; }
-.md-preview blockquote { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; margin: 0 0 14px; color: var(--text2); background: var(--accent-bg); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
-.md-preview blockquote p { margin-bottom: 0; color: var(--text2); }
-.md-preview strong { font-weight: 600; color: var(--text); }
-.md-preview em { font-style: italic; color: var(--text2); }
-.md-preview hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-.md-preview a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-.md-preview table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
-.md-preview th { background: var(--surface2); padding: 10px 12px; font-weight: 600; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); border-bottom: 1px solid var(--border2); }
-.md-preview td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text2); }
-.md-preview tr:last-child td { border-bottom: none; }
-.md-preview img { max-width: 100%; border-radius: var(--radius); }
+.ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text); font-weight: 700; letter-spacing: -.3px; }
+.ql-editor h1 { font-size: 1.65em; margin: .7em 0 .35em; }
+.ql-editor h1:first-child, .ql-editor h2:first-child, .ql-editor h3:first-child { margin-top: 0; }
+.ql-editor h2 { font-size: 1.32em; margin: .6em 0 .3em; }
+.ql-editor h3 { font-size: 1.12em; font-weight: 600; margin: .55em 0 .25em; }
+.ql-editor p { margin: 0 0 .65em; }
+.ql-editor blockquote {
+  border-left: 3px solid var(--accent-mid);
+  padding-left: 14px;
+  margin: .5em 0 .8em;
+  color: var(--text2);
+  font-style: italic;
+}
+.ql-editor pre.ql-syntax {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: .4em 0 .8em;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-x: auto;
+  color: var(--text);
+}
+.ql-editor code {
+  background: var(--surface2);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .9em;
+  color: var(--accent-h);
+}
+.ql-editor a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-mid); }
+.ql-editor ul, .ql-editor ol { padding-left: 1.4em; margin: 0 0 .65em; }
+.ql-editor li { margin: .2em 0; }
+.ql-editor li[data-list="checked"] { color: var(--text3); text-decoration: line-through; }
+.ql-editor li[data-list="checked"] .ql-ui,
+.ql-editor li[data-list="unchecked"] .ql-ui { color: var(--accent); }
+.ql-editor strong { font-weight: 700; }
 
 .editor-empty {
   flex: 1;
@@ -927,8 +999,7 @@ mark { background: #FEF08A; color: #713F12; border-radius: 2px; padding: 0 1px; 
 /* Focus mode */
 body.focus-mode #sidebar,
 body.focus-mode #note-list-panel { display: none; }
-body.focus-mode .md-editor { padding: 40px max(32px, calc((100% - 680px)/2)); font-size: 16px; }
-body.focus-mode .md-preview { padding: 40px max(32px, calc((100% - 680px)/2)); }
+body.focus-mode .ql-editor { padding: 40px max(32px, calc((100% - 680px)/2)); font-size: 16px; }
 
 /* ═══════════════════════════════════════════════════════════════
    COMMAND PALETTE
@@ -1420,11 +1491,6 @@ kbd {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
-        <div class="view-toggle">
-          <button class="view-btn active" id="btn-view-write">Write</button>
-          <button class="view-btn" id="btn-view-preview">Preview</button>
-        </div>
-
         <span class="save-status" id="save-status">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
           Saved
@@ -1458,32 +1524,28 @@ kbd {
       </div>
 
       <div class="md-toolbar" id="md-toolbar">
-        <button class="md-btn" data-fmt="bold"><b>B</b></button>
-        <button class="md-btn" data-fmt="italic"><i>I</i></button>
-        <button class="md-btn" data-fmt="strike"><s>S</s></button>
+        <button class="md-btn" data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+        <button class="md-btn" data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+        <button class="md-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+        <button class="md-btn" data-action="strike" title="Strikethrough"><s>S</s></button>
         <div class="md-divider"></div>
-        <button class="md-btn" data-fmt="h1">H1</button>
-        <button class="md-btn" data-fmt="h2">H2</button>
-        <button class="md-btn" data-fmt="h3">H3</button>
+        <button class="md-btn" data-action="header" data-value="1" title="Heading 1">H1</button>
+        <button class="md-btn" data-action="header" data-value="2" title="Heading 2">H2</button>
+        <button class="md-btn" data-action="header" data-value="3" title="Heading 3">H3</button>
         <div class="md-divider"></div>
-        <button class="md-btn" data-fmt="bullet">• List</button>
-        <button class="md-btn" data-fmt="numbered">1. List</button>
-        <button class="md-btn" data-fmt="check">☑ Check</button>
+        <button class="md-btn" data-action="list" data-value="bullet" title="Bullet list">• List</button>
+        <button class="md-btn" data-action="list" data-value="ordered" title="Numbered list">1. List</button>
+        <button class="md-btn" data-action="checklist" title="Checklist">☑ Check</button>
         <div class="md-divider"></div>
-        <button class="md-btn" data-fmt="code">`code`</button>
-        <button class="md-btn" data-fmt="codeblock">```block</button>
-        <button class="md-btn" data-fmt="quote">❝ Quote</button>
+        <button class="md-btn" data-action="code" title="Inline code">`code`</button>
+        <button class="md-btn" data-action="code-block" title="Code block">```block</button>
+        <button class="md-btn" data-action="blockquote" title="Quote">❝ Quote</button>
         <div class="md-divider"></div>
-        <button class="md-btn" data-fmt="link">🔗</button>
-        <button class="md-btn" data-fmt="table">⊞</button>
-        <button class="md-btn" data-fmt="hr">—</button>
+        <button class="md-btn" data-action="link" title="Link">🔗</button>
       </div>
 
       <div class="writing-area">
-        <textarea class="md-editor" id="md-editor"
-          placeholder="Start writing…&#10;&#10;# Heading&#10;**bold**, *italic*, `code`&#10;- Bullet list&#10;- [ ] Checklist item&#10;> Blockquote"
-          spellcheck="true"></textarea>
-        <div class="md-preview" id="md-preview"></div>
+        <div id="editor-content" spellcheck="true"></div>
       </div>
     </div>
   </div>
@@ -1670,8 +1732,8 @@ let state = {
 let saveTimer = null;
 let ctxNoteId = null;
 let idb = null;
-let viewMode = 'write';
 let isMobile = window.innerWidth <= 768;
+let quill = null;
 
 // ═══════════════════════════════════════════════════════════════
 //  INDEXEDDB
@@ -1792,6 +1854,9 @@ async function loadAll() {
     } catch(e) {}
   }
 
+  // Migrate any legacy Markdown note content to rich text (HTML)
+  await migrateAllNotes();
+
   // Load meta
   const idbTags = await idbGetMeta('tags');
   if (idbTags) state.tags = idbTags;
@@ -1807,6 +1872,36 @@ async function loadAll() {
   }
 
   applyTheme(state.theme);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MARKDOWN → RICH TEXT MIGRATION
+//  Old notes stored their content as Markdown. The editor now
+//  stores/edits rich text (HTML). Any note whose content doesn't
+//  already look like HTML is converted once, then persisted
+//  through the existing (untouched) save pipeline.
+// ═══════════════════════════════════════════════════════════════
+function looksLikeHtml(content) {
+  return !content || /^\s*</.test(content);
+}
+
+function migrateNoteContent(note) {
+  const c = note.content;
+  if (looksLikeHtml(c)) return false;
+  try {
+    note.content = marked.parse(c);
+  } catch(e) {
+    note.content = '<p>' + escHtml(c).replace(/\n/g, '<br>') + '</p>';
+  }
+  return true;
+}
+
+async function migrateAllNotes() {
+  for (const note of state.notes) {
+    if (migrateNoteContent(note)) {
+      await saveNote(note);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1837,6 +1932,7 @@ window.__onFirebaseNote = async (fbNote) => {
   if (!localNote || fbNote.updatedAt > localNote.updatedAt) {
     const note = { ...fbNote };
     delete note.syncedAt;
+    migrateNoteContent(note); // convert legacy Markdown from older/other devices, if any
     if (idx >= 0) state.notes[idx] = note;
     else state.notes.unshift(note);
     await idbSaveNote(note);
@@ -1844,9 +1940,8 @@ window.__onFirebaseNote = async (fbNote) => {
     // If this is the currently open note, refresh
     if (state.currentNoteId === note.id) {
       const titleEl = document.getElementById('note-title');
-      const editorEl = document.getElementById('md-editor');
       if (titleEl && document.activeElement !== titleEl) titleEl.value = note.title;
-      if (editorEl && document.activeElement !== editorEl) editorEl.value = note.content;
+      if (quill && !quill.hasFocus()) setEditorContent(note.content);
     }
   }
 };
@@ -1880,8 +1975,16 @@ function fmtDateFull(ts) {
 
 function wordCount(txt) { return txt.trim() ? txt.trim().split(/\s+/).length : 0; }
 
-function plainText(md) {
-  return md
+function plainText(content) {
+  if (!content) return '';
+  if (/^\s*</.test(content)) {
+    // Rich text (HTML) content — strip tags to get plain text
+    const tmp = document.createElement('div');
+    tmp.innerHTML = content;
+    return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+  }
+  // Legacy markdown content (not yet migrated) — strip markdown syntax
+  return content
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`]+`/g, '')
     .replace(/#{1,6}\s+/g, '')
@@ -2164,8 +2267,17 @@ async function newNote() {
   state.currentNoteId = note.id;
   renderNoteList();
   openEditorUI(note);
-  // Focus title
-  setTimeout(() => document.getElementById('note-title').focus(), 100);
+  // Mobile: transition from note list view to editor view
+  if (isMobile) {
+    document.getElementById('editor-panel').classList.add('active-mobile');
+    document.getElementById('note-list-panel').classList.add('hidden-mobile');
+  }
+  // Focus title if empty, otherwise focus the content editor
+  setTimeout(() => {
+    const titleEl = document.getElementById('note-title');
+    if (!note.title) titleEl.focus();
+    else quill && quill.focus();
+  }, 50);
 }
 
 async function openNote(id) {
@@ -2192,12 +2304,11 @@ function openEditorUI(note) {
   active.style.overflow = 'hidden';
 
   document.getElementById('note-title').value = note.title || '';
-  document.getElementById('md-editor').value = note.content || '';
+  setEditorContent(note.content || '');
   document.getElementById('note-date').textContent = fmtDateFull(note.updatedAt);
   updateWordCount();
   renderMetaTags(note);
   renderFavBtn(note);
-  setViewMode(viewMode);
 }
 
 function closeEditor() {
@@ -2211,7 +2322,7 @@ async function flushCurrentNote() {
   const note = state.notes.find(n => n.id === state.currentNoteId);
   if (!note) return;
   const title = document.getElementById('note-title')?.value?.trim() || '';
-  const content = document.getElementById('md-editor')?.value || '';
+  const content = getEditorContent();
   note.title = title;
   note.content = content;
   note.updatedAt = Date.now();
@@ -2222,7 +2333,7 @@ async function saveCurrentNote(silent = false) {
   const note = state.notes.find(n => n.id === state.currentNoteId);
   if (!note) return;
   note.title = document.getElementById('note-title').value.trim();
-  note.content = document.getElementById('md-editor').value;
+  note.content = getEditorContent();
   note.updatedAt = Date.now();
   setSaveStatus('saving');
   await saveNote(note);
@@ -2352,94 +2463,189 @@ async function removeTagFromNote(id, tag) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  EDITOR VIEW MODE
+//  RICH TEXT EDITOR (Quill) — single always-on editing view
 // ═══════════════════════════════════════════════════════════════
-function setViewMode(mode) {
-  viewMode = mode;
-  const editor = document.getElementById('md-editor');
-  const preview = document.getElementById('md-preview');
-  const toolbar = document.getElementById('md-toolbar');
-  const btnW = document.getElementById('btn-view-write');
-  const btnP = document.getElementById('btn-view-preview');
+function initEditor() {
+  if (quill || typeof Quill === 'undefined') return;
+  quill = new Quill('#editor-content', {
+    modules: {
+      toolbar: false,
+      history: { delay: 500, maxStack: 200, userOnly: true },
+    },
+    placeholder: 'Start writing…',
+  });
 
-  if (mode === 'write') {
-    editor.style.display = '';
-    preview.style.display = 'none';
-    toolbar.style.display = '';
-    btnW.classList.add('active'); btnP.classList.remove('active');
-    editor.focus();
-  } else {
-    preview.innerHTML = marked.parse(editor.value || '*Empty note*');
-    // Support checkboxes
-    preview.querySelectorAll('li').forEach(li => {
-      if (li.textContent.startsWith('[ ] ') || li.textContent.startsWith('[x] ')) {
-        const checked = li.textContent.startsWith('[x] ');
-        li.innerHTML = `<label><input type="checkbox" ${checked ? 'checked' : ''}> ${li.innerHTML.slice(4)}</label>`;
-      }
-    });
-    editor.style.display = 'none';
-    preview.style.display = '';
-    toolbar.style.display = 'none';
-    btnP.classList.add('active'); btnW.classList.remove('active');
+  quill.on('text-change', (delta, oldDelta, source) => {
+    if (source !== 'user') return;
+    updateWordCount();
+    scheduleSave();
+  });
+
+  quill.on('selection-change', () => updateToolbarState());
+}
+
+function focusEditor() {
+  quill && quill.focus();
+}
+
+// Convert HTML -> Quill Delta robustly across Quill API versions
+function htmlToDelta(html) {
+  try { return quill.clipboard.convert({ html }); }
+  catch (e) {
+    try { return quill.clipboard.convert(html); }
+    catch (e2) { return null; }
   }
 }
 
+function setEditorContent(html) {
+  if (!quill) return;
+  const delta = html ? htmlToDelta(html) : null;
+  quill.setContents(delta && delta.ops ? delta : [{ insert: '\n' }], 'silent');
+  quill.history.clear();
+  updateToolbarState();
+}
+
+function getEditorContent() {
+  if (!quill) return '';
+  const html = quill.root.innerHTML;
+  const empty = !quill.getText().trim();
+  return empty ? '' : html;
+}
+
 function updateWordCount() {
-  const txt = document.getElementById('md-editor')?.value || '';
+  const txt = quill ? quill.getText() : '';
   const wc = wordCount(txt);
   const el = document.getElementById('word-count');
   if (el) el.textContent = wc + ' word' + (wc !== 1 ? 's' : '');
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MARKDOWN TOOLBAR
+//  RICH TEXT TOOLBAR
 // ═══════════════════════════════════════════════════════════════
-const FMT_MAP = {
-  bold:      { wrap: ['**','**'] },
-  italic:    { wrap: ['*','*'] },
-  strike:    { wrap: ['~~','~~'] },
-  h1:        { prefix: '# ' },
-  h2:        { prefix: '## ' },
-  h3:        { prefix: '### ' },
-  bullet:    { prefix: '- ' },
-  numbered:  { prefix: '1. ' },
-  check:     { prefix: '- [ ] ' },
-  code:      { wrap: ['`','`'] },
-  codeblock: { wrap: ['```\n','\n```'] },
-  quote:     { prefix: '> ' },
-  hr:        { insert: '\n---\n' },
-  link:      { wrap: ['[','](https://)'] },
-  table:     { insert: '\n| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell     | Cell     | Cell     |\n' },
-};
+function toggleFormat(name, value) {
+  if (!quill) return;
+  const range = quill.getSelection();
+  const current = quill.getFormat(range || undefined);
+  if (value === undefined) {
+    quill.format(name, !current[name]);
+  } else {
+    quill.format(name, current[name] === value ? false : value);
+  }
+  quill.focus();
+  updateToolbarState();
+  scheduleSave();
+}
 
-document.querySelectorAll('.md-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const ta = document.getElementById('md-editor');
-    const fmt = FMT_MAP[btn.dataset.fmt];
-    if (!fmt) return;
-    const start = ta.selectionStart, end = ta.selectionEnd;
-    const sel = ta.value.slice(start, end);
-    let newText, cursor;
-    if (fmt.insert) {
-      newText = ta.value.slice(0,start) + fmt.insert + ta.value.slice(end);
-      cursor = start + fmt.insert.length;
-    } else if (fmt.wrap) {
-      const [pre, post] = fmt.wrap;
-      const ins = pre + (sel || 'text') + post;
-      newText = ta.value.slice(0,start) + ins + ta.value.slice(end);
-      cursor = start + ins.length - post.length - (sel ? 0 : 0);
-    } else if (fmt.prefix) {
-      const ins = fmt.prefix + (sel || '');
-      newText = ta.value.slice(0,start) + ins + ta.value.slice(end);
-      cursor = start + ins.length;
+function updateToolbarState() {
+  if (!quill) return;
+  const range = quill.getSelection();
+  const fmt = range ? quill.getFormat(range) : {};
+  document.querySelectorAll('#md-toolbar .md-btn').forEach(btn => {
+    const action = btn.dataset.action, value = btn.dataset.value;
+    let active = false;
+    switch (action) {
+      case 'bold': active = !!fmt.bold; break;
+      case 'italic': active = !!fmt.italic; break;
+      case 'underline': active = !!fmt.underline; break;
+      case 'strike': active = !!fmt.strike; break;
+      case 'header': active = String(fmt.header || '') === value; break;
+      case 'list': active = fmt.list === value; break;
+      case 'checklist': active = fmt.list === 'checked' || fmt.list === 'unchecked'; break;
+      case 'code': active = !!fmt.code; break;
+      case 'code-block': active = !!fmt['code-block']; break;
+      case 'blockquote': active = !!fmt.blockquote; break;
+      case 'link': active = !!fmt.link; break;
     }
-    ta.value = newText;
-    ta.selectionStart = ta.selectionEnd = cursor;
-    ta.focus();
-    updateWordCount();
-    scheduleSave();
+    btn.classList.toggle('active', active);
+  });
+}
+
+document.querySelectorAll('#md-toolbar .md-btn').forEach(btn => {
+  // Prevent the editor from losing focus/selection when a toolbar button is clicked
+  btn.addEventListener('mousedown', e => e.preventDefault());
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action, value = btn.dataset.value;
+    if (!quill) return;
+    switch (action) {
+      case 'bold': toggleFormat('bold'); break;
+      case 'italic': toggleFormat('italic'); break;
+      case 'underline': toggleFormat('underline'); break;
+      case 'strike': toggleFormat('strike'); break;
+      case 'header': toggleFormat('header', Number(value)); break;
+      case 'list': toggleFormat('list', value); break;
+      case 'checklist': toggleFormat('list', 'checked'); break;
+      case 'code': toggleFormat('code'); break;
+      case 'code-block': toggleFormat('code-block'); break;
+      case 'blockquote': toggleFormat('blockquote'); break;
+      case 'link': openLinkPopover(btn); break;
+    }
   });
 });
+
+// ── Link popover ────────────────────────────────────────────────
+function openLinkPopover(triggerEl) {
+  document.querySelectorAll('.link-popover').forEach(p => p.remove());
+  if (!quill) return;
+  const range = quill.getSelection(true);
+  if (!range) return;
+  const existing = quill.getFormat(range).link || '';
+
+  const popover = document.createElement('div');
+  popover.className = 'link-popover';
+  popover.innerHTML = `
+    <input type="text" class="link-popover-input" placeholder="Paste or type a URL" value="${escHtml(existing)}">
+    <button class="link-popover-apply" type="button">${existing ? 'Update' : 'Add'}</button>
+    ${existing ? '<button class="link-popover-remove" type="button">Remove</button>' : ''}
+  `;
+  const rect = triggerEl.getBoundingClientRect();
+  popover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 290)) + 'px';
+  popover.style.top = (rect.bottom + 8) + 'px';
+  document.body.appendChild(popover);
+
+  const input = popover.querySelector('.link-popover-input');
+  input.focus();
+  input.select();
+
+  function apply() {
+    let url = input.value.trim();
+    close();
+    quill.focus();
+    if (!url) { quill.setSelection(range); quill.format('link', false); return; }
+    if (!/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(url)) url = 'https://' + url;
+    if (range.length === 0) {
+      quill.insertText(range.index, url, 'link', url, 'user');
+      quill.setSelection(range.index + url.length, 0, 'user');
+    } else {
+      quill.setSelection(range);
+      quill.format('link', url);
+    }
+    updateToolbarState();
+    scheduleSave();
+  }
+  function remove() {
+    close();
+    quill.focus();
+    quill.setSelection(range);
+    quill.format('link', false);
+    scheduleSave();
+  }
+  function close() {
+    document.removeEventListener('mousedown', onOutside, true);
+    popover.remove();
+  }
+  function onOutside(e) {
+    if (!popover.contains(e.target) && e.target !== triggerEl) close();
+  }
+
+  popover.querySelector('.link-popover-apply').addEventListener('click', apply);
+  const removeBtn = popover.querySelector('.link-popover-remove');
+  if (removeBtn) removeBtn.addEventListener('click', remove);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); apply(); }
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  setTimeout(() => document.addEventListener('mousedown', onOutside, true), 50);
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  AUTOSAVE
@@ -2454,14 +2660,11 @@ function scheduleSave() {
   }, 1200);
 }
 
-document.getElementById('md-editor').addEventListener('input', () => {
-  updateWordCount();
-  scheduleSave();
-});
+initEditor();
 
 document.getElementById('note-title').addEventListener('input', scheduleSave);
 document.getElementById('note-title').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { document.getElementById('md-editor').focus(); }
+  if (e.key === 'Enter') { e.preventDefault(); focusEditor(); }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2837,8 +3040,6 @@ document.getElementById('btn-editor-back').addEventListener('click', () => {
     document.getElementById('note-list-panel').classList.remove('hidden-mobile');
   });
 });
-document.getElementById('btn-view-write').addEventListener('click', () => setViewMode('write'));
-document.getElementById('btn-view-preview').addEventListener('click', () => setViewMode('preview'));
 document.getElementById('btn-mobile-menu').addEventListener('click', () => toggleSidebar());
 document.getElementById('sidebar-overlay').addEventListener('click', () => {
   document.getElementById('sidebar').classList.remove('mobile-open');
@@ -2856,19 +3057,20 @@ document.querySelectorAll('.sidebar-item[data-filter]').forEach(item => {
 const MANIFEST = {
   name: 'NoteVault',
   short_name: 'NoteVault',
-  description: 'Premium markdown notes with cloud sync',
+  description: 'Premium rich text notes with cloud sync',
   start_url: '.',
   display: 'standalone',
   background_color: '#FAFAFA',
   theme_color: '#2563EB',
   icons: [{
-    src: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%232563EB'/><text y='.9em' font-size='70' x='15'>📝</text></svg>`,
-    sizes: '192x192',
+    src: window.__appIconSvg ? ('data:image/svg+xml,' + encodeURIComponent(window.__appIconSvg)) : window.__appIconPng,
+    sizes: '512x512',
     type: 'image/svg+xml',
     purpose: 'any maskable'
   }]
 };
 const manifestBlob = new Blob([JSON.stringify(MANIFEST)], { type: 'application/manifest+json' });
+const manifestUrl = URL.createObjectURL(manifestBlob);
 const manifestLink =
   document.getElementById('manifest-link');
 
@@ -2965,51 +3167,40 @@ async function init() {
     const welcome = {
       id: uid(),
       title: 'Welcome to NoteVault ✦',
-      content: `# Welcome to NoteVault
-
-Your premium markdown notes app — fast, offline-first, and beautifully designed.
-
-## What's new in v2
-
-- **Cloud sync** via Firebase Firestore — add your config in Settings
-- **IndexedDB** local database — lightning fast, even with thousands of notes
-- **Command palette** — press \`Ctrl+K\` to access every action instantly
-- **Dark mode** — system-aware with manual override (\`Alt+Shift+D\`)
-- **Focus mode** — distraction-free writing (\`Ctrl+Shift+F\`)
-- **Tags** — organize notes by project, topic, or context
-- **Favorites** — star notes you return to often
-- **Export** — JSON, Markdown, or plain text
-- **Right-click** any note for quick actions
-
-## Keyboard shortcuts
-
-| Action | Shortcut |
-|--------|----------|
-| New note | \`Ctrl+N\` |
-| Command palette | \`Ctrl+K\` |
-| Search | \`Ctrl+F\` |
-| Save | \`Ctrl+S\` |
-| Toggle sidebar | \`Ctrl+/\` |
-| Focus mode | \`Ctrl+Shift+F\` |
-| Dark mode | \`Alt+Shift+D\` |
-
-## Markdown is fully supported
-
-**Bold**, *italic*, ~~strikethrough~~, \`inline code\`
-
-> Blockquotes for important thoughts
-
-\`\`\`javascript
-// Code blocks with syntax hinting
-const note = { id: uid(), content: 'Hello, world!' };
-\`\`\`
-
-- [ ] Checklist items
-- [x] Completed item
-
----
-
-Start writing. Your notes are saved automatically.`,
+      content: `<h1>Welcome to NoteVault</h1>
+<p>Your premium notes app — fast, offline-first, and beautifully designed. Notes are now <strong>rich text</strong>: click anywhere and start typing, no special syntax required.</p>
+<h2>What's new in v2</h2>
+<ul>
+<li><strong>Rich text editor</strong> — bold, italic, underline, headings, lists, checklists, quotes, code, and links, all formatted live as you type</li>
+<li><strong>Cloud sync</strong> via Firebase — add your config in Settings</li>
+<li><strong>IndexedDB</strong> local database — lightning fast, even with thousands of notes</li>
+<li><strong>Command palette</strong> — press <code>Ctrl+K</code> to access every action instantly</li>
+<li><strong>Dark mode</strong> — system-aware with manual override (<code>Alt+Shift+D</code>)</li>
+<li><strong>Focus mode</strong> — distraction-free writing (<code>Ctrl+Shift+F</code>)</li>
+<li><strong>Tags</strong> — organize notes by project, topic, or context</li>
+<li><strong>Favorites</strong> — star notes you return to often</li>
+<li><strong>Export</strong> — JSON, Markdown, or plain text</li>
+<li><strong>Right-click</strong> any note for quick actions</li>
+</ul>
+<h2>Keyboard shortcuts</h2>
+<ul>
+<li>New note — <code>Ctrl+N</code></li>
+<li>Command palette — <code>Ctrl+K</code></li>
+<li>Search — <code>Ctrl+F</code></li>
+<li>Save — <code>Ctrl+S</code></li>
+<li>Toggle sidebar — <code>Ctrl+/</code></li>
+<li>Focus mode — <code>Ctrl+Shift+F</code></li>
+<li>Dark mode — <code>Alt+Shift+D</code></li>
+</ul>
+<h2>Try the formatting toolbar</h2>
+<p><strong>Bold</strong>, <em>italic</em>, <u>underline</u>, and <code>inline code</code> — select text and click a toolbar button, or use the usual keyboard shortcuts.</p>
+<blockquote>Blockquotes are great for important thoughts.</blockquote>
+<pre class="ql-syntax">// Code blocks for snippets
+const note = { id: uid(), content: "Hello, world!" };
+</pre>
+<ul><li data-list="checked">Checklist items — click the box to check it off</li></ul>
+<ul><li data-list="checked">Completed item</li></ul>
+<p>Start writing. Your notes are saved automatically.</p>`,
       tags: ['Personal'],
       favorite: true,
       createdAt: Date.now(),
